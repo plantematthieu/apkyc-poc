@@ -64,6 +64,11 @@ form-engine et qui n'existent pas encore dans le package :
 - `nextStep`, `computePath`, `validateStep`, `requiredDocuments` ;
 - l'évaluation JSON Logic passe par json-logic-js, plus l'opérateur `sum`.
 
+Le bouton « Remplir automatiquement » invente des réponses valides et dépose les pièces exigées
+(`autofill`), puis transmet le dossier et descend directement à l'explication. Deux modes sont
+proposés : « Parcours par défaut » (premiers choix) et « Choix aléatoires » (une autre branche à
+chaque fois).
+
 Une fois le dossier transmis, l'aperçu détaille les écritures en base phase par phase :
 
 1. saisie ;

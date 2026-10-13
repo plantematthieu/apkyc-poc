@@ -1,7 +1,9 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
-import { CircleAlert, CircleCheck, Monitor, RotateCcw, Smartphone } from "lucide-react"
+import { useEffect, useMemo, useRef, useState } from "react"
+import { toast } from "sonner"
+import { ChevronDown, CircleAlert, CircleCheck, Dices, Monitor, RotateCcw, Smartphone, Sparkles, WandSparkles } from "lucide-react"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
@@ -9,6 +11,7 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import { languageName, schemaLanguages, show } from "@/lib/builder"
 import { listDocumentTypes, type DocumentType } from "@/lib/local-api"
 import {
+  autofill,
   collectData,
   computePath,
   createContext,
@@ -20,6 +23,7 @@ import {
   requiredDocuments,
   stepValues,
   validateStep,
+  type AutofillMode,
   type DocumentFace,
   type ItemData,
   type PreviewDocument,
@@ -68,6 +72,8 @@ export function PreviewView() {
   const [done, setDone] = useState(false)
   const [refused, setRefused] = useState<string | null>(null)
   const [externalRef, setExternalRef] = useState(true)
+  const planRef = useRef<HTMLDivElement>(null)
+  const [scrollToPlan, setScrollToPlan] = useState(false)
 
   useEffect(() => {
     let alive = true
@@ -106,6 +112,35 @@ export function PreviewView() {
     [done, schema, form, version, path, data, submitted, properties, documentTypes, externalRef],
   )
 
+  // Après un remplissage automatique complet : on descend directement à l'explication.
+  useEffect(() => {
+    if (plan && scrollToPlan) planRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
+  }, [plan, scrollToPlan])
+
+  /** Remplit tout le parcours (réponses et pièces) puis transmet, comme le ferait le client. */
+  const fill = (mode: AutofillMode) => {
+    const types = new Map(documentTypes.map((d) => [d.code, { twoSided: d.twoSided, validityDays: d.validityDays, mimeType: d.allowedMimeTypes[0]! }]))
+    const result = autofill(schema, createContext(properties, documentTypes, [], locale), { mode, documentTypes: types })
+    setRaw(result.raw)
+    setDocuments(result.documents)
+    setHistory(result.path.length ? result.path : [schema.start])
+    setRefused(null)
+    if (result.complete) {
+      setAttempted(false)
+      setDone(true)
+      setScrollToPlan(true)
+      return
+    }
+    setDone(false)
+    setAttempted(true)
+    const step = result.stoppedAt?.stepKey
+    const title = step ? show(schema.steps[step]?.title, locale) || step : ""
+    if (result.stoppedAt?.deadEnd) setRefused("Aucune branche ne s'applique et l'étape n'est pas finale : le parcours s'arrête ici (dead_end_branch).")
+    toast.warning(`Remplissage arrêté à l'étape « ${title} »`, {
+      description: result.stoppedAt?.errors.length ? "Une réponse n'a pas pu être inventée : complétez-la à la main." : undefined,
+    })
+  }
+
   const restart = () => {
     setRaw(withRepeaterDefaults(schema, schema.start, {}))
     setDocuments([])
@@ -113,6 +148,7 @@ export function PreviewView() {
     setAttempted(false)
     setDone(false)
     setRefused(null)
+    setScrollToPlan(false)
   }
 
   const onContinue = () => {
@@ -162,8 +198,31 @@ export function PreviewView() {
               ))}
             </ToggleGroup>
           )}
-          <p className="text-muted-foreground text-sm">Aperçu : le portail tel que le client le remplira (brouillon courant, non enregistré).</p>
-          <Button variant="ghost" size="sm" className="ml-auto" onClick={restart}>
+          <p className="text-muted-foreground hidden text-sm 2xl:block">Aperçu : le portail tel que le client le remplira (brouillon courant, non enregistré).</p>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="ml-auto" disabled={!documentTypes.length}>
+                <WandSparkles /> Remplir automatiquement <ChevronDown className="opacity-50" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-72">
+              <DropdownMenuItem onSelect={() => fill("default")} className="items-start">
+                <Sparkles className="mt-0.5" />
+                <span className="flex flex-col">
+                  <span>Parcours par défaut</span>
+                  <span className="text-muted-foreground text-xs">Premiers choix de chaque liste, puis transmission et explication.</span>
+                </span>
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => fill("random")} className="items-start">
+                <Dices className="mt-0.5" />
+                <span className="flex flex-col">
+                  <span>Choix aléatoires</span>
+                  <span className="text-muted-foreground text-xs">Une autre branche à chaque fois : nature, nombre de fiches, pièces.</span>
+                </span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <Button variant="ghost" size="sm" onClick={restart}>
             <RotateCcw /> Recommencer
           </Button>
         </div>
@@ -220,7 +279,7 @@ export function PreviewView() {
             )}
           </div>
           {plan && (
-            <div className="bg-background mx-auto mt-6 max-w-4xl rounded-2xl border p-5 shadow-sm sm:p-8">
+            <div ref={planRef} className="bg-background mx-auto mt-6 max-w-4xl scroll-mt-4 rounded-2xl border p-5 shadow-sm sm:p-8">
               <BackendPlanView
                 plan={plan}
                 toolbar={

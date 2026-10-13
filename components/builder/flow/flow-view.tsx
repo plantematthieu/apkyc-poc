@@ -5,6 +5,7 @@ import {
   applyNodeChanges,
   Background,
   BackgroundVariant,
+  ControlButton,
   Controls,
   MarkerType,
   MiniMap,
@@ -16,8 +17,7 @@ import {
   type NodeChange,
   type OnConnectEnd,
 } from "@xyflow/react"
-import { Network, Plus } from "lucide-react"
-import { Button } from "@/components/ui/button"
+import { Network } from "lucide-react"
 import { locateIssue, NODE_WIDTH, transitionSources } from "@/lib/builder"
 import { useCatalogStore } from "@/store/catalog"
 import { useEditor } from "@/store/editor"
@@ -144,12 +144,6 @@ function FlowCanvas() {
     [ed, screenToFlowPosition],
   )
 
-  const addStepAtCenter = () => {
-    const el = document.querySelector(".react-flow")?.getBoundingClientRect()
-    const pos = el ? screenToFlowPosition({ x: el.left + el.width / 2, y: el.top + el.height / 2 }) : { x: 0, y: 0 }
-    ed().addStep({ x: pos.x - NODE_WIDTH / 2, y: pos.y - 60 })
-  }
-
   const relayout = () => {
     ed().relayout()
     setTimeout(() => fitView({ duration: 300, padding: 0.2 }), 30)
@@ -188,18 +182,12 @@ function FlowCanvas() {
         maxZoom={1.5}
       >
         <Background variant={BackgroundVariant.Dots} gap={18} size={1.2} />
-        <Controls showInteractive={false} position="bottom-left" />
+        <Controls showInteractive={false} position="top-left">
+          <ControlButton onClick={relayout} title="Réorganiser le parcours" aria-label="Réorganiser le parcours">
+            <Network />
+          </ControlButton>
+        </Controls>
         <MiniMap pannable zoomable position="bottom-right" className="!rounded-lg !border" style={{ marginRight: inspectorOpen ? 352 : 16 }} />
-        <Panel position="top-left" className="flex gap-2">
-          {!readOnly && (
-            <Button size="sm" onClick={addStepAtCenter}>
-              <Plus /> Étape
-            </Button>
-          )}
-          <Button size="sm" variant="outline" className="bg-background" onClick={relayout}>
-            <Network /> Réorganiser
-          </Button>
-        </Panel>
         {!readOnly && (
           <Panel position="bottom-center" className="text-muted-foreground bg-background/80 hidden rounded-full border px-3 py-1 text-xs backdrop-blur md:block">
             Tirez le <span className="font-semibold">+</span> sous une étape pour créer une branche · double-clic sur une étape pour la remplir

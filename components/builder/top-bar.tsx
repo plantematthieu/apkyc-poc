@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { useEffect, useRef, useState } from "react"
-import { ArrowLeft, Braces, Database, Eye, GitBranch, LayoutList, Redo2, Rocket, Search, Undo2 } from "lucide-react"
+import { ArrowLeft, Braces, Database, Eye, GitBranch, LayoutList, Redo2, Rocket, Undo2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Kbd } from "@/components/ui/kbd"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -51,7 +51,7 @@ function FormName() {
   )
 }
 
-export function TopBar({ onOpenCommands, onReload, onOpenVersion }: { onOpenCommands: () => void; onReload: () => void; onOpenVersion: (id: string) => void }) {
+export function TopBar({ onReload, onOpenVersion }: { onReload: () => void; onOpenVersion: (id: string) => void }) {
   const view = useEditor((s) => s.view)
   const setView = useEditor((s) => s.setView)
   const schema = useEditor((s) => s.schema)
@@ -131,9 +131,6 @@ export function TopBar({ onOpenCommands, onReload, onOpenVersion }: { onOpenComm
             <Braces />
           </Button>
         </JsonDialog>
-        <Button variant="ghost" size="icon-sm" className="text-muted-foreground hidden md:inline-flex" onClick={onOpenCommands} aria-label="Actions (Ctrl K)">
-          <Search />
-        </Button>
         <SaveStatus onReload={onReload} />
         {!readOnly && (
           <PublishDialog onPublished={onOpenVersion}>

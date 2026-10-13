@@ -19,7 +19,7 @@ import { rectSortingStrategy, SortableContext, sortableKeyboardCoordinates } fro
 import { ArrowLeft, Eye, GitBranch } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { incoming, instantiatePreset, newField, PRESETS, show, type PaletteKind, type Preset } from "@/lib/builder"
+import { incoming, newField, show, type PaletteKind } from "@/lib/builder"
 import type { Field } from "@/lib/dsl"
 import { cn } from "@/lib/utils"
 import { useEditor, type Container } from "@/store/editor"
@@ -30,9 +30,7 @@ import { FieldSettings } from "./field-settings"
 import { LocalizedInline } from "./inline-text"
 import { Palette } from "./palette"
 
-const isRepeaterish = (d?: DragData) =>
-  !!d &&
-  ((d.kind === "field" && d.fieldType === "repeater") || (d.kind === "palette" && d.paletteKind === "repeater") || (d.kind === "preset" && d.hasRepeater))
+const isRepeaterish = (d?: DragData) => !!d && ((d.kind === "field" && d.fieldType === "repeater") || (d.kind === "palette" && d.paletteKind === "repeater"))
 
 /**
  * Cible sous le pointeur, la plus profonde d'abord : champ d'un repeater, zone d'un repeater,
@@ -81,7 +79,6 @@ export function StepEditor() {
     ed().insertFields(stepKey, container, beforeKey, fields)
   }
   const add = (kind: PaletteKind, container: Container = "root", beforeKey: string | null = null) => insert([newField(kind, ed().schema)], container, beforeKey)
-  const addPreset = (p: Preset, container: Container = "root", beforeKey: string | null = null) => insert(instantiatePreset(p, ed().schema), container, beforeKey)
 
   const onDragStart = (e: DragStartEvent) => setDragging((e.active.data.current as DragData) ?? null)
   const onDragEnd = (e: DragEndEvent) => {
@@ -94,25 +91,20 @@ export function StepEditor() {
     const container = o.container
     const beforeKey = o.kind === "field" ? String(over.id) : null
     if (a.kind === "palette") add(a.paletteKind, container, beforeKey)
-    else if (a.kind === "preset") {
-      const p = PRESETS.find((x) => x.id === a.presetId)
-      if (p) addPreset(p, container, beforeKey)
-    } else if (a.kind === "field" && active.id !== over.id) ed().moveField(String(active.id), container, beforeKey)
+    else if (a.kind === "field" && active.id !== over.id) ed().moveField(String(active.id), container, beforeKey)
   }
 
   const Ghost =
     dragging && dragging.kind !== "container"
       ? dragging.kind === "palette"
         ? PALETTE_ICONS[dragging.paletteKind]
-        : dragging.kind === "preset"
-          ? TYPE_ICONS.repeater
-          : TYPE_ICONS[dragging.fieldType]
+        : TYPE_ICONS[dragging.fieldType]
       : null
 
   return (
     <DndContext sensors={sensors} collisionDetection={collision} onDragStart={onDragStart} onDragEnd={onDragEnd} onDragCancel={() => setDragging(null)}>
       <div className={cn("grid h-full", readOnly ? "grid-cols-[minmax(0,1fr)_360px] max-lg:grid-cols-1" : "grid-cols-[240px_minmax(0,1fr)_360px] max-lg:grid-cols-[220px_minmax(0,1fr)]")}>
-        {!readOnly && <Palette onAdd={(k) => add(k)} onAddPreset={(p) => addPreset(p)} />}
+        {!readOnly && <Palette onAdd={(k) => add(k)} />}
 
         <main className="bg-muted/40 min-h-0 overflow-y-auto" onClick={() => ed().select(null)}>
           <div className="mx-auto flex max-w-3xl flex-col gap-5 px-6 py-6">
@@ -206,7 +198,7 @@ function RootCanvas({ fields, readOnly }: { fields: Field[]; readOnly: boolean }
       {fields.length === 0 && (
         <div className="text-muted-foreground flex flex-col items-center gap-1 rounded-2xl border-2 border-dashed px-6 py-16 text-center text-sm">
           <p className="text-foreground font-medium">Cette étape est vide</p>
-          <p>{readOnly ? "Version figée." : "Glissez ici un champ ou un bloc métier depuis la gauche."}</p>
+          <p>{readOnly ? "Version figée." : "Glissez ici un champ depuis la gauche."}</p>
         </div>
       )}
     </div>

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest"
 import { FORM_TEMPLATE_ROWS } from "@/lib/catalog/form-templates"
 import { listDocumentTypes, listProperties } from "@/lib/local-api"
 import {
+  autofill,
   collectData,
   computePath,
   createContext,
@@ -154,5 +155,44 @@ describe("dossier et projection", () => {
     expect(approve.some((r) => r.table === "party_external_refs")).toBe(true)
     expect(plan.stays.map((s) => s.path)).toEqual(["price", "financing", "certification"])
     expect(planToSql(plan)).toContain("INSERT INTO party_relations")
+  })
+})
+
+describe("remplissage automatique", () => {
+  const typesOf = async () => {
+    const { documentTypes } = await context()
+    return new Map(documentTypes.map((d) => [d.code, { twoSided: d.twoSided, validityDays: d.validityDays, mimeType: d.allowedMimeTypes[0]! }]))
+  }
+
+  it("parcours par défaut : premiers choix jusqu'à la transmission", async () => {
+    const { ctx } = await context()
+    const documentTypes = await typesOf()
+    const a = autofill(acquisition, ctx, { mode: "default", documentTypes })
+    expect(a.stoppedAt).toBeUndefined()
+    expect(a.complete).toBe(true)
+    expect(a.path).toEqual(["operation", "buyer", "pep", "buyer_documents", "declarations"])
+    expect(a.raw.certification).toBe(true)
+    expect(a.raw.is_pep).toBe(false)
+    const i = autofill(insurance, ctx, { mode: "default", documentTypes })
+    expect(i.complete).toBe(true)
+    // La carte d'identité, premier type accepté, est déposée recto et verso.
+    expect(i.documents.filter((d) => d.fieldPath === "id_document").map((d) => d.face)).toEqual(["front", "back"])
+  })
+
+  it("choix aléatoires : explore toutes les branches et va toujours au bout", async () => {
+    const { ctx } = await context()
+    const documentTypes = await typesOf()
+    const seen = new Set<string>()
+    let seed = 1
+    const random = () => ((seed = (seed * 16807) % 2147483647) - 1) / 2147483646
+    for (let n = 0; n < 60; n++)
+      for (const schema of [acquisition, insurance]) {
+        const r = autofill(schema, ctx, { mode: "random", documentTypes, random })
+        expect(r.stoppedAt, JSON.stringify(r.stoppedAt)).toBeUndefined()
+        r.path.forEach((k) => seen.add(k))
+        const items = (r.raw.co_owners ?? r.raw.beneficial_owners) as { co_share_percentage?: number }[] | undefined
+        if (r.raw.co_owners) expect(items!.reduce((t, x) => t + (x.co_share_percentage ?? 0), 0)).toBe(100)
+      }
+    expect(seen).toEqual(new Set([...Object.keys(acquisition.steps), ...Object.keys(insurance.steps)]))
   })
 })

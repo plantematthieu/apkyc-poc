@@ -10,7 +10,6 @@ import { getForm, getFormVersion, listFormVersions } from "@/lib/local-api"
 import { useCatalog } from "@/store/catalog"
 import { useEditor } from "@/store/editor"
 import { markSaved, startAutosave } from "./autosave"
-import { CommandMenu } from "./command-menu"
 import { FlowView } from "./flow/flow-view"
 import { ReadOnlyBanner } from "./read-only-banner"
 import { StepEditor } from "./step/step-editor"
@@ -34,7 +33,6 @@ export function Builder({ formId, versionId }: { formId: string; versionId?: str
   const view = useEditor((s) => s.view)
   const loadedVersion = useEditor((s) => s.version?.id)
   const [status, setStatus] = useState<"loading" | "ready" | "missing">("loading")
-  const [cmdOpen, setCmdOpen] = useState(false)
 
   const load = useCallback(
     (alive: () => boolean = () => true) =>
@@ -68,11 +66,6 @@ export function Builder({ formId, versionId }: { formId: string; versionId?: str
       const typing = !!target?.closest("input, textarea, select, [contenteditable='true'], [role='dialog']")
       const mod = e.metaKey || e.ctrlKey
       const key = e.key.toLowerCase()
-      if (mod && key === "k") {
-        e.preventDefault()
-        setCmdOpen((o) => !o)
-        return
-      }
       if (typing) return
       const ed = useEditor.getState()
       const history = useEditor.temporal.getState()
@@ -112,14 +105,13 @@ export function Builder({ formId, versionId }: { formId: string; versionId?: str
 
   return (
     <div className="flex h-dvh flex-col overflow-hidden">
-      <TopBar onOpenCommands={() => setCmdOpen(true)} onReload={() => void load()} onOpenVersion={openVersion} />
+      <TopBar onReload={() => void load()} onOpenVersion={openVersion} />
       <ReadOnlyBanner onOpenVersion={openVersion} />
       <div className="relative min-h-0 flex-1">
         {view === "flow" && <FlowView />}
         {view === "step" && <StepEditor />}
         {view === "preview" && <PreviewView key={loadedVersion} />}
       </div>
-      <CommandMenu open={cmdOpen} onOpenChange={setCmdOpen} />
     </div>
   )
 }

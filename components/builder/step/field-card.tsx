@@ -15,7 +15,6 @@ import { LocalizedInline, useShow } from "./inline-text"
 
 export type DragData =
   | { kind: "palette"; paletteKind: PaletteKind; label: string }
-  | { kind: "preset"; presetId: string; label: string; hasRepeater: boolean }
   | { kind: "field"; container: Container; fieldType: FieldType; label: string }
   | { kind: "container"; container: Container }
 
@@ -197,8 +196,7 @@ function RepeaterBody({ repeater }: { repeater: RepeaterField }) {
   const canDrop =
     activeData &&
     !(activeData.kind === "field" && activeData.fieldType === "repeater") &&
-    !(activeData.kind === "palette" && activeData.paletteKind === "repeater") &&
-    !(activeData.kind === "preset" && activeData.hasRepeater)
+    !(activeData.kind === "palette" && activeData.paletteKind === "repeater")
   const range =
     repeater.min !== undefined && repeater.max !== undefined
       ? `De ${repeater.min} à ${repeater.max} fiches`
